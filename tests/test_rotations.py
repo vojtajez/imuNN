@@ -79,7 +79,7 @@ def test_log_near_pi(eps):
         axis /= np.linalg.norm(axis)
         phi = (np.pi - eps) * axis
         out = log_so3(exp_so3(phi))
-        # u úhlu π jsou ±phi stejná rotace, proto porovnáváme rotace i normu
+        # at angle pi, +-phi are the same rotation, so compare the norm and the rotation itself
         np.testing.assert_allclose(np.linalg.norm(out), np.pi - eps, atol=1e-7)
         np.testing.assert_allclose(exp_so3(out), exp_so3(phi), atol=1e-7)
         if eps > 0:
@@ -98,7 +98,7 @@ def test_batch_shapes():
     assert quat_log(q).shape == (3, 4, 3)
 
 
-# ----------------------------- kvaterniony --------------------------------- #
+# ------------------------------- quaternions -------------------------------- #
 def test_quat_exp_matches_scipy():
     phi = random_phi(100, max_angle=3.0)
     expected = to_wxyz(ScipyR.from_rotvec(phi).as_quat())
@@ -114,7 +114,7 @@ def test_quat_to_R_matches_scipy_and_exp_so3():
 
 
 def test_R_to_quat_roundtrip_all_branches():
-    # náhodné rotace + rotace o π kolem os pokrývají všechny větve Shepperdovy metody
+    # random rotations + rotations by pi about the axes cover all branches of Shepperd's method
     Rs = [ScipyR.random(200, random_state=2).as_matrix()]
     for axis in np.eye(3):
         Rs.append(exp_so3(np.pi * axis)[None])
@@ -138,7 +138,7 @@ def test_quat_conj_is_inverse():
 def test_quat_log_exp_roundtrip():
     phi = random_phi(300)
     np.testing.assert_allclose(quat_log(quat_exp(phi)), phi, atol=1e-9)
-    # i znaménkově převrácený kvaternion (stejná rotace) dá stejný log
+    # a sign-flipped quaternion (the same rotation) gives the same log
     np.testing.assert_allclose(quat_log(-quat_exp(phi)), phi, atol=1e-9)
 
 
@@ -146,11 +146,11 @@ def test_quat_rotate_matches_matrix():
     q = quat_exp(random_phi(50))
     v = rng.normal(size=(50, 3))
     np.testing.assert_allclose(quat_rotate(q, v), np.einsum("nij,nj->ni", quat_to_R(q), v), atol=1e-12)
-    # rotace zachovává normu
+    # rotation preserves the norm
     np.testing.assert_allclose(np.linalg.norm(quat_rotate(q, v), axis=-1), np.linalg.norm(v, axis=-1), atol=1e-12)
 
 
-# ------------------- pravá perturbace (konvence ESKF) ----------------------- #
+# ------------------- right perturbation (ESKF convention) ------------------- #
 def test_boxplus_boxminus_roundtrip():
     q = quat_exp(random_phi(100))
     d = random_phi(100, max_angle=1.0)
@@ -159,7 +159,7 @@ def test_boxplus_boxminus_roundtrip():
 
 
 def test_boxplus_is_right_multiplication():
-    """R(q ⊕ dθ) = R(q) Exp(dθ): perturbace v tělesném rámci."""
+    """R(q ⊕ dθ) = R(q) Exp(dθ): perturbation in the body frame."""
     q = quat_exp(random_phi(50))
     d = random_phi(50, max_angle=0.5)
     np.testing.assert_allclose(quat_to_R(quat_boxplus(q, d)), quat_to_R(q) @ exp_so3(d), atol=1e-12)
