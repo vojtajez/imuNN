@@ -46,7 +46,7 @@ Immutable dataclasses (`frozen=True, slots=True, eq=False`) over numpy arrays. S
 | `FilterState` | `t`, `NominalState`, `P (15x15)` | what the estimator holds between steps |
 | `Measurement` | `t, z, R` (any dimension) | the filter's only input besides IMU: network velocity (`z = v_b`, `R = diag(σ²)`), oracle ground-truth velocity (B3 baseline), future sources |
 | `SensorCalib` | `T_BS`, `rate_hz`, noise densities from `imu0/sensor.yaml` | filled by the parser; source for `Q` |
-| `NoiseParams` | noise densities, initial stds, `meas_var_min` | filter tuning: `from_calib(calib, scale)` builds it, `P0()` gives the initial covariance |
+| `NoiseParams` | noise densities, initial stds, `meas_var_min`; no defaults, all values come directly from the `filter` section of `configs/config.yaml` | filter tuning: `from_config(calib, cfg)` applies the noise scales and sets the initial state uncertainties directly from the data analysis; `P0()` gives the initial covariance |
 | `Sequence` | `name, imu, gt, calib, t0_ns` | one dataset sequence, the unit consumed by the window dataset, runner and evaluation. Validates that ground truth lies within the IMU range |
 
 ### Notes

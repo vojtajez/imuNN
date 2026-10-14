@@ -4,3 +4,23 @@ data:
     train: [MH_01_easy, MH_03_medium, MH_05_difficult, V1_01_easy, V2_01_easy, V2_03_difficult]
     val: [V1_02_medium]
     test: [MH_02_easy, MH_04_difficult, V1_03_difficult, V2_02_medium]
+
+# Filter tuning, numbers derived from scripts/analyze_init_noise.py across all EuRoC sequences.
+# The filter starts at the first ground-truth sample (p, v, q from GT, biases initialized to zero).
+filter:
+  meas_var_min: 1.0e-4       # (m/s)^2, lower clamp of the network velocity variance; retune on validation residuals
+
+  # Multipliers of the sensor.yaml noise densities used for Q.
+  # GT gyro-bias drift matches the yaml random walk; the accelerometer one is ~2.5x more conservative.
+  noise_scale:
+    acc_noise: 1.0
+    gyro_noise: 1.0
+    acc_rw: 0.4
+    gyro_rw: 1.0
+
+  init_std:                  # 1-sigma of the initial error state
+    p: 1.0e-3                # m
+    v: 3.5e-2                # m/s
+    theta: 1.0e-2            # rad
+    ba: 0.3                  # m/s^2
+    bg: 0.1                  # rad/s

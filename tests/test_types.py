@@ -122,16 +122,39 @@ def test_calib_properties():
     np.testing.assert_allclose(c2.R_BS, np.eye(3))
 
 
-def test_noise_params_from_calib_and_P0():
-    c = make_calib()
-    n = NoiseParams.from_calib(c, scale=2.0, init_std_p=0.5)
-    assert n.acc_noise_density == pytest.approx(4e-3)
-    assert n.gyro_random_walk == pytest.approx(2 * 1.9393e-5)
+FILTER_CFG = {
+    "meas_var_min": 1e-4,
+    "noise_scale": {"acc_noise": 1.0, "gyro_noise": 2.0, "acc_rw": 0.4, "gyro_rw": 1.0},
+    "init_std": {
+        "p": 0.5,
+        "v": 3.5e-2,
+        "theta": 1e-2,
+        "ba": 0.3,
+        "bg": 0.1,
+    },
+}
+
+
+def test_noise_params_from_config_and_P0():
+    n = NoiseParams.from_config(make_calib(), FILTER_CFG)
+    assert n.acc_noise_density == pytest.approx(2e-3)
+    assert n.gyro_noise_density == pytest.approx(2 * 1.6968e-4)
+    assert n.acc_random_walk == pytest.approx(0.4 * 3e-3)
+    assert n.gyro_random_walk == pytest.approx(1.9393e-5)
+    assert n.init_std_v == pytest.approx(3.5e-2)
+    assert n.init_std_ba == pytest.approx(0.3)
+    assert n.init_std_bg == pytest.approx(0.1)
     assert n.meas_var_min == 1e-4
     P0 = n.P0()
     assert P0.shape == (15, 15)
     np.testing.assert_allclose(np.diag(P0)[P_SL], 0.25)
+    np.testing.assert_allclose(np.diag(P0)[BG_SL], 0.1**2)
     assert np.all(np.linalg.eigvalsh(P0) > 0)
+
+
+def test_noise_params_has_no_defaults():
+    with pytest.raises(TypeError):
+        NoiseParams(acc_noise_density=1.0, gyro_noise_density=1.0, acc_random_walk=1.0, gyro_random_walk=1.0)
 
 
 def test_sequence_validates_ranges():

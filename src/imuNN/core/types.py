@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 
 import numpy as np
@@ -24,7 +25,7 @@ _QUAT_TOL = 1e-3
 # helpers
 
 def _arr(name: str, x, *shape: int | None) -> np.ndarray:
-    """Convert to float64 and check the shape. ``None`` in ``shape`` means any length."""
+    """Convert to float64 and check the shape. None in shape means any length."""
     a = np.asarray(x, dtype=np.float64)
     if a.ndim != len(shape) or any(s is not None and s != d for s, d in zip(shape, a.shape)):
         raise ValueError(f"{name}: expected shape {shape}, got {a.shape}")
@@ -236,29 +237,42 @@ class SensorCalib:
 class NoiseParams:
     """Filter tuning: continuous noise densities for Q, initial uncertainties P0 and a clamp for R.
 
-    Kept separate from ``SensorCalib``: calibration is a property of the sensor, this is a filter choice.
+    No default values on purpose: all numbers come from the config (``filter`` section),
+    see ``from_config``. Kept separate from ``SensorCalib``: calibration is a property of
+    the sensor, this is a filter choice.
     """
 
     acc_noise_density: float
     gyro_noise_density: float
     acc_random_walk: float
     gyro_random_walk: float
-    init_std_p: float = 1e-3  # m
-    init_std_v: float = 1e-2  # m/s
-    init_std_theta: float = 1e-2  # rad
-    init_std_ba: float = 1e-1  # m/s^2
-    init_std_bg: float = 1e-2  # rad/s
-    meas_var_min: float = 1e-4  # (m/s)^2, lower clamp of the velocity-measurement variance
+    init_std_p: float  # m
+    init_std_v: float  # m/s
+    init_std_theta: float  # rad
+    init_std_ba: float  # m/s^2
+    init_std_bg: float  # rad/s
+    meas_var_min: float  # (m/s)^2, lower clamp of the velocity-measurement variance
 
     @classmethod
-    def from_calib(cls, calib: SensorCalib, scale: float = 1.0, **kwargs) -> NoiseParams:
-        """Noise densities from the calibration, optionally multiplied by ``scale`` (common Q tuning)."""
+    def from_config(cls, calib: SensorCalib, cfg: Mapping) -> NoiseParams:
+        """Build from the ``filter`` section of the config (a plain dict) and the sensor calibration.
+
+        Noise densities come from ``calib`` multiplied by ``cfg["noise_scale"]``;
+        initial uncertainties come directly from ``cfg["init_std"]``.
+        """
+        scale = cfg["noise_scale"]
+        init_std = cfg["init_std"]
         return cls(
-            acc_noise_density=scale * calib.acc_noise_density,
-            gyro_noise_density=scale * calib.gyro_noise_density,
-            acc_random_walk=scale * calib.acc_random_walk,
-            gyro_random_walk=scale * calib.gyro_random_walk,
-            **kwargs,
+            acc_noise_density=scale["acc_noise"] * calib.acc_noise_density,
+            gyro_noise_density=scale["gyro_noise"] * calib.gyro_noise_density,
+            acc_random_walk=scale["acc_rw"] * calib.acc_random_walk,
+            gyro_random_walk=scale["gyro_rw"] * calib.gyro_random_walk,
+            init_std_p=init_std["p"],
+            init_std_v=init_std["v"],
+            init_std_theta=init_std["theta"],
+            init_std_ba=init_std["ba"],
+            init_std_bg=init_std["bg"],
+            meas_var_min=cfg["meas_var_min"],
         )
 
     def P0(self) -> np.ndarray:
